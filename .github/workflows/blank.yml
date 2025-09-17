@@ -1,0 +1,28 @@
+name: Deploy Flask App
+
+on:
+  push:
+    branches:
+      - deploy
+    # فقط وقتی commit message با "version" شروع بشه
+    # این فیلتر event رو محدود می‌کنه
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build-and-push:
+    runs-on: self-hosted
+    if: startsWith(github.event.head_commit.message, 'version')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t elaheahmadi/flaskrepo:latest .
+
+      - name: Push Docker image
+        run: docker push elaheahmadi/flaskrepo:latest
