@@ -1,47 +1,23 @@
-name: Build & Push Docker
+name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ deploy ]        # اتوماتیک: هر push به شاخه‌ی deploy
-  workflow_dispatch:            # دستی: از تب Actions خودت اجرا کن
+    branches:
+      - deploy   # هر وقت به برنچ deploy پوش کنی اجرا میشه
 
 jobs:
   build:
-    # اگر self-hosted داری و می‌خواهی همان اجرا کند:
-    # runs-on: self-hosted
-    # اگر می‌خواهی روی runner خودِ GitHub اجرا شود:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      # لاگین به DockerHub با سکرت‌ها
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}   # مثلا: elaheahmadi
-          password: ${{ secrets.DOCKER_PASSWORD }}   # یا بهتر: DOCKER_TOKEN
+      - name: Build Docker image
+        run: docker build -t elaheahmadi/flaskrepo:latest .
 
-      # گیت‌گارد: فقط اگر پیام آخرین کمیت با "version:" شروع شود، push = true
-      - name: Decide whether to push
-        id: gate
-        run: |
-          MSG="$(git log -1 --pretty=%B | tr -d '\r')"
-          if echo "$MSG" | grep -qi '^version:'; then
-            echo "push=true" >> $GITHUB_OUTPUT
-          else
-            echo "push=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build & (maybe) Push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: ${{ steps.gate.outputs.push }}   # true/false
-          tags: |
-            elaheahmadi/flaskrepo:latest
-            elaheahmadi/flaskrepo:${{ github.sha }}
+      - name: Push Docker image
+        run: docker push elaheahmadi/flaskrepo:latest
